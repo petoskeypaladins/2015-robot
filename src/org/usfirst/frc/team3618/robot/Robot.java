@@ -5,7 +5,9 @@ import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
+
 import org.usfirst.frc.team3618.robot.commands.ExampleCommand;
+import org.usfirst.frc.team3618.robot.subsystems.ClampSubsystem;
 import org.usfirst.frc.team3618.robot.subsystems.ExampleSubsystem;
 
 /**
@@ -18,6 +20,7 @@ import org.usfirst.frc.team3618.robot.subsystems.ExampleSubsystem;
 public class Robot extends IterativeRobot {
 
 	public static final ExampleSubsystem exampleSubsystem = new ExampleSubsystem();
+	public static final ClampSubsystem clampSubsystem = new ClampSubsystem();
 	public static OI oi;
 
     Command autonomousCommand;
