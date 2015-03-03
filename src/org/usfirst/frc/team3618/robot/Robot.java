@@ -1,14 +1,24 @@
 
 package org.usfirst.frc.team3618.robot;
 
+import org.usfirst.frc.team3618.robot.commands.MoveToLevelCommand;
+import org.usfirst.frc.team3618.robot.commands.autonomous.AutonomousCommand;
+import org.usfirst.frc.team3618.robot.subsystems.ChassisSubsystem;
+import org.usfirst.frc.team3618.robot.subsystems.LawrenceSubsystem;
+import org.usfirst.frc.team3618.robot.subsystems.LeftPIDSubsystem;
+import org.usfirst.frc.team3618.robot.subsystems.ClampSubsystem;
+import org.usfirst.frc.team3618.robot.subsystems.RightPIDSubsystem;
+import org.usfirst.frc.team3618.robot.subsystems.ToteArmSubsystem;
+import org.usfirst.frc.team3618.robot.subsystems.VisionSubsystem;
+
+import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.IterativeRobot;
+import edu.wpi.first.wpilibj.PowerDistributionPanel;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
-
-import org.usfirst.frc.team3618.robot.commands.ExampleCommand;
-import org.usfirst.frc.team3618.robot.subsystems.ClampSubsystem;
-import org.usfirst.frc.team3618.robot.subsystems.ExampleSubsystem;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -19,29 +29,57 @@ import org.usfirst.frc.team3618.robot.subsystems.ExampleSubsystem;
  */
 public class Robot extends IterativeRobot {
 
-	public static final ExampleSubsystem exampleSubsystem = new ExampleSubsystem();
-	public static final ClampSubsystem clampSubsystem = new ClampSubsystem();
+	public static final ChassisSubsystem chassisSubsystem = new ChassisSubsystem();
+	public static final ClampSubsystem liftSubsystem = new ClampSubsystem();
+	public static final VisionSubsystem visionSubsystem = new VisionSubsystem();
+	public static final ToteArmSubsystem toteArmSubsystem = new ToteArmSubsystem();
+	public static final RightPIDSubsystem rightPIDSubsystem = new RightPIDSubsystem();
+	public static final LeftPIDSubsystem leftPIDSubsystem = new LeftPIDSubsystem();
+	public static final LawrenceSubsystem lawrenceSubsystem = new LawrenceSubsystem();
 	public static OI oi;
+	
+	
+	public static int currentLevel = 0;
+	public static double countsPerInch = 102.7492;
+	
 
-    Command autonomousCommand;
-
+	// Power Distribution Panel instance for seeing current
+	private PowerDistributionPanel pdp;
+	private int lastPress = -1; // no press active
+	
+	private SendableChooser autoChooser;
+	private Command autonomousCommand;
+	
+	
     /**
      * This function is run when the robot is first started up and should be
      * used for any initialization code.
      */
-    public void robotInit() {
-		oi = new OI();
-        // instantiate the command used for the autonomous period
-        autonomousCommand = new ExampleCommand();
+   	
+	public void robotInit() {
+		// Creating instances of objects
+    	oi = new OI();
+    	pdp = new PowerDistributionPanel(); 
+    	
+    	
+    	
+    	autoChooser = new SendableChooser();
+    	autoChooser.addDefault("Drive Forward Only", 1);
+    	autoChooser.addObject("One to Score", 2);
+    	autoChooser.addObject("2 Totes", 3);
+    	autoChooser.addObject("3 Totes", 4);
+    	SmartDashboard.putData("Autonomous Mode Chooser", autoChooser);
     }
+	
 	
 	public void disabledPeriodic() {
 		Scheduler.getInstance().run();
 	}
 
     public void autonomousInit() {
-        // schedule the autonomous command (example)
-        if (autonomousCommand != null) autonomousCommand.start();
+    	
+    	
+     
     }
 
     /**
@@ -52,11 +90,9 @@ public class Robot extends IterativeRobot {
     }
 
     public void teleopInit() {
-		// This makes sure that the autonomous stops running when
-        // teleop starts running. If you want the autonomous to 
-        // continue until interrupted by another command, remove
-        // this line or comment it out.
-        if (autonomousCommand != null) autonomousCommand.cancel();
+//		Compressor c = new Compressor();
+//		
+//		c.stop();
     }
 
     /**
@@ -72,6 +108,55 @@ public class Robot extends IterativeRobot {
      */
     public void teleopPeriodic() {
         Scheduler.getInstance().run();
+        
+        // PDP Values are being sent to SmartDashboard constantly
+        SmartDashboard.putNumber("PDP Total Current", pdp.getTotalCurrent());
+        SmartDashboard.putNumber("Motor 2 Current (Elbow)", pdp.getCurrent(0));
+        SmartDashboard.putNumber("Motor 3 Current (Left Lift)", pdp.getCurrent(1));
+        SmartDashboard.putNumber("Motor 0 Current (LF Drive)", pdp.getCurrent(2));
+        SmartDashboard.putNumber("Motor 1 Current (LR Drive)", pdp.getCurrent(3));
+        SmartDashboard.putNumber("Motor 5 Current (RF Drive)", pdp.getCurrent(12));
+        SmartDashboard.putNumber("Motor 4 Current (RR Drive)", pdp.getCurrent(13));
+        SmartDashboard.putNumber("Motor 7 Current (Shoulder)", pdp.getCurrent(14));
+        SmartDashboard.putNumber("Motor 6 Current (Right Lift)", pdp.getCurrent(15));
+        
+        SmartDashboard.putNumber("PDP Voltage", pdp.getVoltage());  
+        SmartDashboard.putBoolean(
+        		"BottomLeftLimit", Robot.leftPIDSubsystem.bLimitSwitch.get());
+        SmartDashboard.putBoolean(
+        		"BottomRightLimit", Robot.rightPIDSubsystem.bLimitSwitch.get());
+        SmartDashboard.putNumber(
+        		"LeftEncoder", Robot.leftPIDSubsystem.leftLiftEncoder.get());
+        SmartDashboard.putNumber(
+        		"RightEncoder", Robot.rightPIDSubsystem.rightLiftEncoder.get());
+        
+        SmartDashboard.putNumber("PID Current Level", currentLevel);
+        SmartDashboard.putNumber("PID Setpoint", leftPIDSubsystem.getSetpoint());
+        //Periodic methods are called once every 20ms (50Hz) and that equates to 50 cycles per 1 second
+        
+        SmartDashboard.putData("Left Lift", leftPIDSubsystem.getPIDController());
+        SmartDashboard.putData("Right  Lift", rightPIDSubsystem.getPIDController());
+        
+        SmartDashboard.putNumber("ShoulderEncoder", Robot.lawrenceSubsystem.shoulderEncoder.get());
+        SmartDashboard.putNumber("Elbow Encoder", Robot.lawrenceSubsystem.elbowEncoder.get());
+        
+        SmartDashboard.putBoolean("Awful Left Encoder?", Robot.leftPIDSubsystem.isMyEncoderAwful);
+        SmartDashboard.putBoolean("Awful Right Encoder?", Robot.rightPIDSubsystem.isMyEncoderAwful);
+        SmartDashboard.putNumber("Gyro Angle", Robot.chassisSubsystem.firstGyro.getAngle());
+        
+        int thisPress = oi.DrewsXBoxController.getPOV();
+        SmartDashboard.putNumber("This press", thisPress);
+        if(thisPress != lastPress) {
+        	Command move;
+        	if (thisPress == 0) {
+        		move = new MoveToLevelCommand(true);
+        		move.start();
+        	}else if(thisPress == 180){
+	        	move = new MoveToLevelCommand(false);
+	        	move.start();
+        	}
+            lastPress = thisPress;
+        }
     }
     
     /**

@@ -8,20 +8,25 @@ import org.usfirst.frc.team3618.robot.Robot;
 /**
  *
  */
-public class ExampleCommand extends Command {
+public class TestDriveCommand extends Command {
 
-    public ExampleCommand() {
+    public TestDriveCommand() {
         // Use requires() here to declare subsystem dependencies
-        requires(Robot.exampleSubsystem);
+        requires(Robot.chassisSubsystem);
     }
 
     // Called just before this Command runs the first time
     protected void initialize() {
-    	
+    	    
     }
 
     // Called repeatedly when this Command is scheduled to run
     protected void execute() {
+    	if(Robot.oi.toggleZAxis.get() == true) {
+    		Robot.chassisSubsystem.DriveMe(Robot.oi.stick, 0.75);
+    	} else {
+    		Robot.chassisSubsystem.DriveMe(Robot.oi.stick);
+    	}
     	
     }
 
@@ -32,12 +37,12 @@ public class ExampleCommand extends Command {
 
     // Called once after isFinished returns true
     protected void end() {
-    	
+    	Robot.chassisSubsystem.StopMe();
     }
 
     // Called when another command which requires one or more of the same
     // subsystems is scheduled to run
     protected void interrupted() {
-    	
+    	Robot.chassisSubsystem.StopMe(); 	
     }
 }
